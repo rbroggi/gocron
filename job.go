@@ -447,35 +447,47 @@ type oneTimeJobDefinition struct {
 }
 
 func (o oneTimeJobDefinition) setup(j *internalJob, _ *time.Location, now time.Time) error {
-	j.jobSchedule = oneTimeJob{}
-	if err := o.startAt(j); err != nil {
-		return err
+	sortedTimes := o.startAt(j)
+	sort.Slice(sortedTimes, func(i, j int) bool {
+		return sortedTimes[i].Before(sortedTimes[j])
+	})
+	// keep only schedules that are in the future
+	idx, found := slices.BinarySearchFunc(sortedTimes, now, timeCmp())
+	if found {
+		idx++
 	}
-	// in case we are not in the `startImmediately` case, our start-date must be in
-	// the future according to the scheduler clock
-	if !j.startImmediately && (j.startTime.IsZero() || j.startTime.Before(now)) {
+	sortedTimes = sortedTimes[idx:]
+	if !j.startImmediately && len(sortedTimes) == 0 {
 		return ErrOneTimeJobStartDateTimePast
 	}
+	j.jobSchedule = oneTimeJob{sortedTimes: sortedTimes}
 	return nil
 }
 
 // OneTimeJobStartAtOption defines when the one time job is run
-type OneTimeJobStartAtOption func(*internalJob) error
+type OneTimeJobStartAtOption func(*internalJob) []time.Time
 
 // OneTimeJobStartImmediately tells the scheduler to run the one time job immediately.
 func OneTimeJobStartImmediately() OneTimeJobStartAtOption {
-	return func(j *internalJob) error {
+	return func(j *internalJob) []time.Time {
 		j.startImmediately = true
-		return nil
+		return []time.Time{}
 	}
 }
 
 // OneTimeJobStartDateTime sets the date & time at which the job should run.
 // This datetime must be in the future (according to the scheduler clock).
 func OneTimeJobStartDateTime(start time.Time) OneTimeJobStartAtOption {
-	return func(j *internalJob) error {
-		j.startTime = start
-		return nil
+	return func(j *internalJob) []time.Time {
+		return []time.Time{start}
+	}
+}
+
+// OneTimeJobStartDateTimes sets the date & times at which the job should run.
+// At least one of the date/times must be in the future (according to the scheduler clock).
+func OneTimeJobStartDateTimes(times ...time.Time) OneTimeJobStartAtOption {
+	return func(j *internalJob) []time.Time {
+		return times
 	}
 }
 
@@ -485,30 +497,6 @@ func OneTimeJob(startAt OneTimeJobStartAtOption) JobDefinition {
 	return oneTimeJobDefinition{
 		startAt: startAt,
 	}
-}
-
-var _JobDefinition = (*atTimesJobDefinition)(nil)
-
-type atTimesJobDefinition struct {
-	atTimes []time.Time
-}
-
-func (a atTimesJobDefinition) setup(j *internalJob, _ *time.Location, now time.Time) error {
-	sortedTimes := a.atTimes
-	sort.Slice(a.atTimes, func(i, j int) bool {
-		return a.atTimes[i].Before(a.atTimes[j])
-	})
-	// keep only schedules that are in the future
-	idx, found := slices.BinarySearchFunc(sortedTimes, now, timeCmp())
-	if found {
-		idx++
-	}
-	sortedTimes = sortedTimes[idx:]
-	if len(sortedTimes) == 0 {
-		return ErrAtTimesJobAtLeastOneInFuture
-	}
-	j.jobSchedule = atTimesJob{sortedTimes: sortedTimes}
-	return nil
 }
 
 func timeCmp() func(element time.Time, target time.Time) int {
@@ -521,10 +509,6 @@ func timeCmp() func(element time.Time, target time.Time) int {
 		}
 		return 1
 	}
-}
-
-func AtTimesJob(atTimes ...time.Time) JobDefinition {
-	return atTimesJobDefinition{atTimes: atTimes}
 }
 
 // -----------------------------------------------
@@ -917,13 +901,7 @@ func (m monthlyJob) nextMonthDayAtTime(lastRun time.Time, days []int, firstPass 
 
 var _ jobSchedule = (*oneTimeJob)(nil)
 
-type oneTimeJob struct{}
-
-func (o oneTimeJob) next(_ time.Time) time.Time {
-	return time.Time{}
-}
-
-type atTimesJob struct {
+type oneTimeJob struct {
 	sortedTimes []time.Time
 }
 
@@ -938,18 +916,18 @@ type atTimesJob struct {
 // lastRun: 7 => [idx=3,found=false] => next is 8 - sorted[idx] idx=3
 // lastRun: 8 => [idx=3,found=found] => next is none
 // lastRun: 9 => [idx=3,found=found] => next is none
-func (a atTimesJob) next(lastRun time.Time) time.Time {
-	idx, found := slices.BinarySearchFunc(a.sortedTimes, lastRun, timeCmp())
+func (o oneTimeJob) next(lastRun time.Time) time.Time {
+	idx, found := slices.BinarySearchFunc(o.sortedTimes, lastRun, timeCmp())
 	// if found, the next run is the following index
 	if found {
 		idx++
 	}
 	// exhausted runs
-	if idx >= len(a.sortedTimes) {
+	if idx >= len(o.sortedTimes) {
 		return time.Time{}
 	}
 
-	return a.sortedTimes[idx]
+	return o.sortedTimes[idx]
 }
 
 // -----------------------------------------------

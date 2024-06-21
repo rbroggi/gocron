@@ -2112,7 +2112,7 @@ func TestScheduler_AtTimesJob(t *testing.T) {
 			atTimes:   []time.Time{},
 			fakeClock: clockwork.NewFakeClock(),
 			assertErr: func(t require.TestingT, err error, i ...interface{}) {
-				require.ErrorIs(t, err, ErrAtTimesJobAtLeastOneInFuture)
+				require.ErrorIs(t, err, ErrOneTimeJobStartDateTimePast)
 			},
 		},
 		{
@@ -2120,7 +2120,7 @@ func TestScheduler_AtTimesJob(t *testing.T) {
 			atTimes:   []time.Time{n.Add(-1 * time.Second)},
 			fakeClock: clockwork.NewFakeClockAt(n),
 			assertErr: func(t require.TestingT, err error, i ...interface{}) {
-				require.ErrorIs(t, err, ErrAtTimesJobAtLeastOneInFuture)
+				require.ErrorIs(t, err, ErrOneTimeJobStartDateTimePast)
 			},
 		},
 		{
@@ -2252,7 +2252,7 @@ func TestScheduler_AtTimesJob(t *testing.T) {
 
 			runs := atomic.Uint32{}
 			j, err := s.NewJob(
-				AtTimesJob(tt.atTimes...),
+				OneTimeJob(OneTimeJobStartDateTimes(tt.atTimes...)),
 				NewTask(func() {
 					runs.Add(1)
 				}),

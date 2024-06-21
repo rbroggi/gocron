@@ -354,24 +354,16 @@ func ExampleOneTimeJob() {
 			func() {},
 		),
 	)
-
-	s.Start()
-}
-
-func ExampleAtTimesJob() {
-	s, _ := NewScheduler()
-	defer func() { _ = s.Shutdown() }()
-
-	// run job in 10 seconds and in 55 minutes from now
+	// run job twice - once in 10 seconds and once in 55 minutes
 	n := time.Now()
 	_, _ = s.NewJob(
-		AtTimesJob(
-			n.Add(10*time.Second),
-			n.Add(55*time.Minute),
+		OneTimeJob(
+			OneTimeJobStartDateTimes(
+				n.Add(10*time.Second),
+				n.Add(55*time.Minute),
+			),
 		),
-		NewTask(
-			func() {},
-		),
+		NewTask(func() {}),
 	)
 
 	s.Start()
