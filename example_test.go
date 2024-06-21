@@ -358,6 +358,25 @@ func ExampleOneTimeJob() {
 	s.Start()
 }
 
+func ExampleAtTimesJob() {
+	s, _ := NewScheduler()
+	defer func() { _ = s.Shutdown() }()
+
+	// run job in 10 seconds and in 55 minutes from now
+	n := time.Now()
+	_, _ = s.NewJob(
+		AtTimesJob(
+			n.Add(10*time.Second),
+			n.Add(55*time.Minute),
+		),
+		NewTask(
+			func() {},
+		),
+	)
+
+	s.Start()
+}
+
 func ExampleScheduler_jobs() {
 	s, _ := NewScheduler()
 	defer func() { _ = s.Shutdown() }()

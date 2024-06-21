@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"math/rand"
+	"sort"
 	"strings"
 	"time"
 
@@ -486,6 +487,46 @@ func OneTimeJob(startAt OneTimeJobStartAtOption) JobDefinition {
 	}
 }
 
+var _JobDefinition = (*atTimesJobDefinition)(nil)
+
+type atTimesJobDefinition struct {
+	atTimes []time.Time
+}
+
+func (a atTimesJobDefinition) setup(j *internalJob, _ *time.Location, now time.Time) error {
+	sortedTimes := a.atTimes
+	sort.Slice(a.atTimes, func(i, j int) bool {
+		return a.atTimes[i].Before(a.atTimes[j])
+	})
+	// keep only schedules that are in the future
+	idx, found := slices.BinarySearchFunc(sortedTimes, now, timeCmp())
+	if found {
+		idx++
+	}
+	sortedTimes = sortedTimes[idx:]
+	if len(sortedTimes) == 0 {
+		return ErrAtTimesJobAtLeastOneInFuture
+	}
+	j.jobSchedule = atTimesJob{sortedTimes: sortedTimes}
+	return nil
+}
+
+func timeCmp() func(element time.Time, target time.Time) int {
+	return func(element time.Time, target time.Time) int {
+		if element.Equal(target) {
+			return 0
+		}
+		if element.Before(target) {
+			return -1
+		}
+		return 1
+	}
+}
+
+func AtTimesJob(atTimes ...time.Time) JobDefinition {
+	return atTimesJobDefinition{atTimes: atTimes}
+}
+
 // -----------------------------------------------
 // -----------------------------------------------
 // ----------------- Job Options -----------------
@@ -880,6 +921,35 @@ type oneTimeJob struct{}
 
 func (o oneTimeJob) next(_ time.Time) time.Time {
 	return time.Time{}
+}
+
+type atTimesJob struct {
+	sortedTimes []time.Time
+}
+
+// next finds the next item in a sorted list of times using binary-search.
+//
+// example: sortedTimes: [2, 4, 6, 8]
+//
+// lastRun: 1 => [idx=0,found=false] => next is 2 - sorted[idx] idx=0
+// lastRun: 2 => [idx=0,found=true] => next is 4 - sorted[idx+1] idx=1
+// lastRun: 3 => [idx=1,found=false] => next is 4 - sorted[idx] idx=1
+// lastRun: 4 => [idx=1,found=true] => next is 6 - sorted[idx+1] idx=2
+// lastRun: 7 => [idx=3,found=false] => next is 8 - sorted[idx] idx=3
+// lastRun: 8 => [idx=3,found=found] => next is none
+// lastRun: 9 => [idx=3,found=found] => next is none
+func (a atTimesJob) next(lastRun time.Time) time.Time {
+	idx, found := slices.BinarySearchFunc(a.sortedTimes, lastRun, timeCmp())
+	// if found, the next run is the following index
+	if found {
+		idx++
+	}
+	// exhausted runs
+	if idx >= len(a.sortedTimes) {
+		return time.Time{}
+	}
+
+	return a.sortedTimes[idx]
 }
 
 // -----------------------------------------------

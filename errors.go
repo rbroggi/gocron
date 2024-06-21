@@ -25,6 +25,7 @@ var (
 	ErrNewJobWrongNumberOfParameters = fmt.Errorf("gocron: NewJob: Number of provided parameters does not match expected")
 	ErrNewJobWrongTypeOfParameters   = fmt.Errorf("gocron: NewJob: Type of provided parameters does not match expected")
 	ErrOneTimeJobStartDateTimePast   = fmt.Errorf("gocron: OneTimeJob: start must not be in the past")
+	ErrAtTimesJobAtLeastOneInFuture  = fmt.Errorf("gocron: AtTimesJob: at least one point in time must be in the future")
 	ErrStopExecutorTimedOut          = fmt.Errorf("gocron: timed out waiting for executor to stop")
 	ErrStopJobsTimedOut              = fmt.Errorf("gocron: timed out waiting for jobs to finish")
 	ErrStopSchedulerTimedOut         = fmt.Errorf("gocron: timed out waiting for scheduler to stop")
