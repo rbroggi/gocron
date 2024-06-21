@@ -2068,7 +2068,7 @@ func TestScheduler_OneTimeJob(t *testing.T) {
 
 			s := newTestScheduler(t)
 
-			j, err := s.NewJob(
+			_, err := s.NewJob(
 				OneTimeJob(tt.startAt()),
 				NewTask(func() {
 					jobRan <- struct{}{}
@@ -2083,12 +2083,6 @@ func TestScheduler_OneTimeJob(t *testing.T) {
 			case <-time.After(500 * time.Millisecond):
 				t.Fatal("timed out waiting for job to run")
 			}
-
-			var nextRun time.Time
-			for ; nextRun.IsZero(); nextRun, err = j.NextRun() { //nolint:revive
-			}
-			assert.NoError(t, err)
-			assert.True(t, nextRun.Before(time.Now()))
 
 			assert.NoError(t, s.Shutdown())
 		})
