@@ -311,7 +311,7 @@ func (s *scheduler) selectExecJobsOutForRescheduling(id uuid.UUID) {
 		// always grab the last element in the slice as that is the furthest
 		// out in the future and the time from which we want to calculate
 		// the subsequent next run time.
-		slices.SortStableFunc(j.nextScheduled, AscendingTime)
+		slices.SortStableFunc(j.nextScheduled, ascendingTime)
 		scheduleFrom = j.nextScheduled[len(j.nextScheduled)-1]
 	}
 

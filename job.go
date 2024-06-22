@@ -447,9 +447,9 @@ type oneTimeJobDefinition struct {
 
 func (o oneTimeJobDefinition) setup(j *internalJob, _ *time.Location, now time.Time) error {
 	sortedTimes := o.startAt(j)
-	slices.SortStableFunc(sortedTimes, AscendingTime)
+	slices.SortStableFunc(sortedTimes, ascendingTime)
 	// keep only schedules that are in the future
-	idx, found := slices.BinarySearchFunc(sortedTimes, now, AscendingTime)
+	idx, found := slices.BinarySearchFunc(sortedTimes, now, ascendingTime)
 	if found {
 		idx++
 	}
@@ -902,7 +902,7 @@ type oneTimeJob struct {
 // lastRun: 8 => [idx=3,found=found] => next is none
 // lastRun: 9 => [idx=3,found=found] => next is none
 func (o oneTimeJob) next(lastRun time.Time) time.Time {
-	idx, found := slices.BinarySearchFunc(o.sortedTimes, lastRun, AscendingTime)
+	idx, found := slices.BinarySearchFunc(o.sortedTimes, lastRun, ascendingTime)
 	// if found, the next run is the following index
 	if found {
 		idx++

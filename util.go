@@ -88,11 +88,11 @@ func convertAtTimesToDateTime(atTimes AtTimes, location *time.Location) ([]time.
 		}
 		atTimesDate = append(atTimesDate, at.time(location))
 	}
-	slices.SortStableFunc(atTimesDate, AscendingTime)
+	slices.SortStableFunc(atTimesDate, ascendingTime)
 	return atTimesDate, nil
 }
 
-func AscendingTime(a, b time.Time) int {
+func ascendingTime(a, b time.Time) int {
 	return a.Compare(b)
 }
 
